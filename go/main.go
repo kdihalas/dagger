@@ -24,6 +24,10 @@ import (
 // It looks for a line like "go 1.16" and captures the version number.
 var goVersionRegex = regexp.MustCompile(`^go(\d+\.\d+)$`)
 
+const (
+	MOUNT_PATH = "/src"
+)
+
 type Go struct {
 	Source *dagger.Directory
 }
@@ -51,7 +55,7 @@ func (g *Go) Base(ctx context.Context) *dagger.Container {
 		version = matches[1]
 	}
 	// Use the Go version specified in the go.mod file if it exists, otherwise use the latest version.
-	return dag.Container().From("golang:"+version).WithDirectory("/src", g.Source).WithWorkdir("/src")
+	return dag.Container().From("golang:"+version).WithDirectory(MOUNT_PATH, g.Source).WithWorkdir(MOUNT_PATH)
 }
 
 // Download runs the `go mod download` command in the source directory to download Go module dependencies.
