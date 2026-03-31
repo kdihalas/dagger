@@ -22,7 +22,7 @@ import (
 
 // goVersionRegex is a regular expression to extract the Go version from the go.mod file.
 // It looks for a line like "go 1.16" and captures the version number.
-var goVersionRegex = regexp.MustCompile(`^go(\d+\.\d+)$`)
+var goVersionRegex = regexp.MustCompile(`(?m)^go (\d+\.\d+(?:\.\d+)?)$`)
 
 const (
 	MOUNT_PATH = "/src"
@@ -41,19 +41,24 @@ func New(
 	return &Go{Source: source}
 }
 
-// Base returns a container with the Go source code mounted at /src and the working directory set to /src.
-func (g *Go) Base(ctx context.Context) *dagger.Container {
+// GoVersion returns the Go version specified in the go.mod file, or "unknown" if it cannot be determined.
+func (g *Go) GoVersion(ctx context.Context) string {
 	goModFile, err := g.Source.File("go.mod").Contents(ctx)
 	if err != nil {
 		panic("go.mod file not found in source directory")
 	}
-	version := "1.26"
+	version := "unknown"
 	// Extract the Go version from the go.mod file if it exists.
-	// The go.mod file should have a line like "go 1.16".
 	matches := goVersionRegex.FindStringSubmatch(goModFile)
 	if len(matches) == 2 {
 		version = matches[1]
 	}
+	return version
+}
+
+// Base returns a container with the Go source code mounted at /src and the working directory set to /src.
+func (g *Go) Base(ctx context.Context) *dagger.Container {
+	version := g.GoVersion(ctx)
 	// Use the Go version specified in the go.mod file if it exists, otherwise use the latest version.
 	return dag.Container().From("golang:"+version).WithDirectory(MOUNT_PATH, g.Source).WithWorkdir(MOUNT_PATH)
 }
