@@ -160,8 +160,8 @@ func (g *Go) Publish(
 	path string,
 	// imageName is the name of the container image to publish, including the tag (e.g., "my-nginx:latest").
 	// +optional
-	// +default=test:latest
-	imageName string,
+	// +default=[]
+	imageName []string,
 	// Registry is the registry to which the container should be pushed, defaulting to docker.io
 	// +optional
 	// +default=docker.io
@@ -173,5 +173,11 @@ func (g *Go) Publish(
 	// +optional
 	password *dagger.Secret,
 ) (string, error) {
-	return g.Container(ctx, path).WithRegistryAuth(registry, username, password).Publish(ctx, fmt.Sprintf("%s/%s", registry, imageName))
+	if len(imageName) == 0 {
+		return "", fmt.Errorf("imageName is required to publish the container")
+	}
+	for _, name := range imageName {
+		g.Container(ctx, path).WithRegistryAuth(registry, username, password).Publish(ctx, fmt.Sprintf("%s/%s", registry, name))
+	}
+	return fmt.Sprintf("Published image(s): %v to registry: %s", imageName, registry), nil
 }
