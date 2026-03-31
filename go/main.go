@@ -176,8 +176,9 @@ func (g *Go) Publish(
 	if len(imageName) == 0 {
 		return "", fmt.Errorf("imageName is required to publish the container")
 	}
+	container := g.Container(ctx, path).WithRegistryAuth(registry, username, password)
 	for _, name := range imageName {
-		g.Container(ctx, path).WithRegistryAuth(registry, username, password).Publish(ctx, fmt.Sprintf("%s/%s", registry, name))
+		container.Publish(ctx, fmt.Sprintf("%s/%s", registry, name))
 	}
 	return fmt.Sprintf("Published image(s): %v to registry: %s", imageName, registry), nil
 }
