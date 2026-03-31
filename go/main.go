@@ -99,7 +99,13 @@ func (g *Go) Build(
 	// +optional
 	// +default=.
 	path string) *dagger.Directory {
-	return g.Download(ctx).WithExec([]string{"go", "build", "-o", "/out/app", path}).Directory("/out")
+	// CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s"
+	return g.
+		Download(ctx).
+		WithEnvVariable("CGO_ENABLED", "0").
+		WithEnvVariable("GOOS", "linux").
+		WithExec([]string{"go", "build", "-ldflags=-w -s", "-o", "/out/app", path}).
+		Directory("/out")
 }
 
 // Publish builds and pushes the Go application to a container registry.
