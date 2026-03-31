@@ -79,6 +79,7 @@ func (g *Go) Download(ctx context.Context) *dagger.Container {
 }
 
 // Test runs the `go test` command in the source directory.
+// +check
 func (g *Go) Test(
 	ctx context.Context,
 	// Test args
@@ -109,7 +110,7 @@ func (g *Go) Build(
 		Directory("/out")
 }
 
-// Publish builds and pushes the Go application to a container registry.
+// Container builds the Go application and creates a container with the built binary.
 func (g *Go) Container(
 	ctx context.Context,
 	// The path to the Go package or file to build.
@@ -123,6 +124,7 @@ func (g *Go) Container(
 	return dag.Container().From(RUNTIME_CONTAINER).WithFile("/app", binary).WithWorkdir("/").WithEntrypoint([]string{"/app"})
 }
 
+// DebugContainer builds the Go application and creates a container with the built binary, using a debug-friendly base image.
 func (g *Go) DebugContainer(
 	ctx context.Context,
 	// The path to the Go package or file to build.
