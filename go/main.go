@@ -78,6 +78,19 @@ func (g *Go) Download(ctx context.Context) *dagger.Container {
 	return g.Base(ctx).WithExec([]string{"go", "mod", "download"})
 }
 
+// Lint runs the `golangci-lint run` command in the source directory to lint the Go code. It uses the latest version of golangci-lint.
+func (g *Go) Lint(
+	ctx context.Context,
+	// Lint args to pass to the golangci-lint command (e.g., "--fast", "--enable=golint"). These are optional and default to an empty list.
+	// +optional
+	// +default=[]
+	args []string,
+) (string, error) {
+	commands := []string{"golangci-lint", "run"}
+	commands = append(commands, args...)
+	return dag.Container().From("golangci/golangci-lint:v2.11.4").WithDirectory(MOUNT_PATH, g.Source).WithWorkdir(MOUNT_PATH).WithExec(commands).Stdout(ctx)
+}
+
 // Test runs the `go test` command in the source directory.
 // +check
 func (g *Go) Test(
@@ -86,12 +99,12 @@ func (g *Go) Test(
 	// +optional
 	// +default=[]
 	args []string,
-) *dagger.Container {
+) (string, error) {
 	commands := []string{"go", "test"}
 	commands = append(commands, args...)
 	// Run tests with the specified flags and arguments
 	commands = append(commands, "./...")
-	return g.Download(ctx).WithExec(commands)
+	return g.Download(ctx).WithExec(commands).Stdout(ctx)
 }
 
 // Build runs the `go build` command in the source directory.
