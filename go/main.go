@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"dagger/go/internal/dagger"
+	"fmt"
 	"regexp"
 )
 
@@ -119,11 +120,10 @@ func (g *Go) Container(
 	// Build the Go application
 	binary := g.Build(ctx, path).File("app")
 	// Create a container with the built binary
-	return dag.Container().From(DEBUG_CONTAINER).WithFile("/app", binary)
+	return dag.Container().From(RUNTIME_CONTAINER).WithFile("/app", binary).WithWorkdir("/").WithEntrypoint([]string{"/app"})
 }
 
-// Publish builds the Go application and creates a container using a distroless base image, which is suitable for production use.
-func (g *Go) Publish(
+func (g *Go) DebugContainer(
 	ctx context.Context,
 	// The path to the Go package or file to build.
 	// +optional
@@ -133,5 +133,30 @@ func (g *Go) Publish(
 	// Build the Go application
 	binary := g.Build(ctx, path).File("app")
 	// Create a container with the built binary
-	return dag.Container().From(RUNTIME_CONTAINER).WithFile("/app", binary).WithWorkdir("/").WithEntrypoint([]string{"/app"})
+	return dag.Container().From(DEBUG_CONTAINER).WithFile("/app", binary).WithWorkdir("/").WithEntrypoint([]string{"/app"})
+}
+
+// Publish builds the Go application and pushes it to a container registry with the specified image name and registry credentials.
+func (g *Go) Publish(
+	ctx context.Context,
+	// The path to the Go package or file to build.
+	// +optional
+	// +default=.
+	path string,
+	// imageName is the name of the container image to publish, including the tag (e.g., "my-nginx:latest").
+	// +optional
+	// +default=test:latest
+	imageName string,
+	// Registry is the registry to which the container should be pushed, defaulting to docker.io
+	// +optional
+	// +default=docker.io
+	registry string,
+	// Username for the container registry, if authentication is required.
+	// +optional
+	username string,
+	// Password for the container registry, if authentication is required.
+	// +optional
+	password *dagger.Secret,
+) (string, error) {
+	return g.Container(ctx, path).WithRegistryAuth(registry, username, password).Publish(ctx, fmt.Sprintf("%s/%s", registry, imageName))
 }
