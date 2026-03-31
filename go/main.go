@@ -73,15 +73,13 @@ func (g *Go) Download(ctx context.Context) *dagger.Container {
 // Test runs the `go test` command in the source directory.
 func (g *Go) Test(
 	ctx context.Context,
-	// Whether to run tests with the -race flag to detect race conditions
+	// Test args
 	// +optional
-	// +default=false
-	race bool,
+	// +default=[]
+	args []string,
 ) *dagger.Container {
 	commands := []string{"go", "test"}
-	if race {
-		commands = append(commands, "-race")
-	}
+	commands = append(commands, args...)
 	// Run tests with the specified flags and arguments
 	commands = append(commands, "./...")
 	return g.Download(ctx).WithExec(commands)
