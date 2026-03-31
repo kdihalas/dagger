@@ -25,7 +25,9 @@ import (
 var goVersionRegex = regexp.MustCompile(`(?m)^go (\d+\.\d+(?:\.\d+)?)$`)
 
 const (
-	MOUNT_PATH = "/src"
+	MOUNT_PATH        = "/src"
+	DEBUG_CONTAINER   = "alpine:latest"
+	RUNTIME_CONTAINER = "gcr.io/distroless/static-debian13"
 )
 
 type Go struct {
@@ -98,4 +100,32 @@ func (g *Go) Build(
 	// +default=.
 	path string) *dagger.Directory {
 	return g.Download(ctx).WithExec([]string{"go", "build", "-o", "/out/app", path}).Directory("/out")
+}
+
+// Publish builds and pushes the Go application to a container registry.
+func (g *Go) Container(
+	ctx context.Context,
+	// The path to the Go package or file to build.
+	// +optional
+	// +default=.
+	path string,
+) *dagger.Container {
+	// Build the Go application
+	binary := g.Build(ctx, path).File("app")
+	// Create a container with the built binary
+	return dag.Container().From(DEBUG_CONTAINER).WithFile("/app", binary)
+}
+
+// Publish builds the Go application and creates a container using a distroless base image, which is suitable for production use.
+func (g *Go) Publish(
+	ctx context.Context,
+	// The path to the Go package or file to build.
+	// +optional
+	// +default=.
+	path string,
+) *dagger.Container {
+	// Build the Go application
+	binary := g.Build(ctx, path).File("app")
+	// Create a container with the built binary
+	return dag.Container().From(RUNTIME_CONTAINER).WithFile("/app", binary).WithWorkdir("/").WithEntrypoint([]string{"/app"})
 }
