@@ -88,6 +88,11 @@ func (g *Go) Test(
 }
 
 // Build runs the `go build` command in the source directory.
-func (g *Go) Build(ctx context.Context) *dagger.Container {
-	return g.Download(ctx).WithExec([]string{"go", "build", "-o", "app"})
+func (g *Go) Build(
+	ctx context.Context,
+	// The path to the Go package or file to build.
+	// +optional
+	// +default=.
+	path string) *dagger.Directory {
+	return g.Download(ctx).WithExec([]string{"go", "build", "-o", "/out/app", path}).Directory("/out")
 }
