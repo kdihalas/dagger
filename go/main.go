@@ -85,7 +85,12 @@ func (g *Go) Lint(
 	// +optional
 	// +default=[]
 	args []string,
+	// Path to the Go code to lint. This is optional and defaults to the current directory (".").
+	// +optional
+	// +defaultPath=.
+	path *dagger.Directory,
 ) (string, error) {
+	g.Source = path
 	commands := []string{"golangci-lint", "run"}
 	commands = append(commands, args...)
 	return dag.Container().From("golangci/golangci-lint:v2.11.4").WithDirectory(MOUNT_PATH, g.Source).WithWorkdir(MOUNT_PATH).WithExec(commands).Stdout(ctx)
@@ -99,7 +104,12 @@ func (g *Go) Test(
 	// +optional
 	// +default=[]
 	args []string,
+	// Path
+	// +optional
+	// +defaultPath=.
+	path *dagger.Directory,
 ) (string, error) {
+	g.Source = path
 	commands := []string{"go", "test"}
 	commands = append(commands, args...)
 	// Run tests with the specified flags and arguments
