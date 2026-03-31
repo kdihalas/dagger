@@ -1,0 +1,89 @@
+// A generated module for Go functions
+//
+// This module has been generated via dagger init and serves as a reference to
+// basic module structure as you get started with Dagger.
+//
+// Two functions have been pre-created. You can modify, delete, or add to them,
+// as needed. They demonstrate usage of arguments and return types using simple
+// echo and grep commands. The functions can be called from the dagger CLI or
+// from one of the SDKs.
+//
+// The first line in this comment block is a short description line and the
+// rest is a long description with more detail on the module's purpose or usage,
+// if appropriate. All modules should have a short description.
+
+package main
+
+import (
+	"context"
+	"dagger/go/internal/dagger"
+	"regexp"
+)
+
+// goVersionRegex is a regular expression to extract the Go version from the go.mod file.
+// It looks for a line like "go 1.16" and captures the version number.
+var goVersionRegex = regexp.MustCompile(`^go(\d+\.\d+)$`)
+
+type Go struct {
+	Source *dagger.Directory
+}
+
+func New(
+	// The source directory to use for Go commands. This should contain a go.mod file.
+	// +optional
+	// +defaultPath=.
+	source *dagger.Directory,
+) *Go {
+	return &Go{Source: source}
+}
+
+// Base returns a container with the Go source code mounted at /src and the working directory set to /src.
+func (g *Go) Base(ctx context.Context) *dagger.Container {
+	goModFile, err := g.Source.File("go.mod").Contents(ctx)
+	if err != nil {
+		panic("go.mod file not found in source directory")
+	}
+	version := "latest"
+	// Extract the Go version from the go.mod file if it exists.
+	// The go.mod file should have a line like "go 1.16".
+	matches := goVersionRegex.FindStringSubmatch(goModFile)
+	if len(matches) == 2 {
+		version = matches[1]
+	}
+	// Use the Go version specified in the go.mod file if it exists, otherwise use the latest version.
+	return dag.Container().From("golang:"+version).WithDirectory("/src", g.Source).WithWorkdir("/src")
+}
+
+// Download runs the `go mod download` command in the source directory to download Go module dependencies.
+func (g *Go) Download(ctx context.Context) *dagger.Container {
+	// Check if go.mod and go.sum files exist in the source directory
+	if exists, _ := g.Source.Exists(ctx, "go.mod"); !exists {
+		panic("go.mod file not found in source directory")
+	}
+	if exists, _ := g.Source.Exists(ctx, "go.sum"); !exists {
+		g.Base(ctx).WithExec([]string{"go", "mod", "tidy"})
+	}
+	return g.Base(ctx).WithExec([]string{"go", "mod", "download"})
+}
+
+// Test runs the `go test` command in the source directory.
+func (g *Go) Test(
+	ctx context.Context,
+	// Whether to run tests with the -race flag to detect race conditions
+	// +optional
+	// +default=false
+	race bool,
+) *dagger.Container {
+	commands := []string{"go", "test"}
+	if race {
+		commands = append(commands, "-race")
+	}
+	// Run tests with the specified flags and arguments
+	commands = append(commands, "./...")
+	return g.Download(ctx).WithExec(commands)
+}
+
+// Build runs the `go build` command in the source directory.
+func (g *Go) Build(ctx context.Context) *dagger.Container {
+	return g.Download(ctx).WithExec([]string{"go", "build", "-o", "app"})
+}
