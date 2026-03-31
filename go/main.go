@@ -47,7 +47,7 @@ func (g *Go) Base(ctx context.Context) *dagger.Container {
 	if err != nil {
 		panic("go.mod file not found in source directory")
 	}
-	version := "latest"
+	version := "1.26"
 	// Extract the Go version from the go.mod file if it exists.
 	// The go.mod file should have a line like "go 1.16".
 	matches := goVersionRegex.FindStringSubmatch(goModFile)
