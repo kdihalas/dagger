@@ -14,6 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: crazy-max/ghaction-github-runtime@v4
+
+      - name: Build cache config
+        id: cache-config
+        run: |
+          URL="${ACTIONS_RESULTS_URL:-$ACTIONS_CACHE_URL}"
+          echo "::add-mask::${ACTIONS_RUNTIME_TOKEN}"
+          echo "config=type=gha,mode=max,scope=dagger-${GITHUB_REF_NAME},url=${URL},token=${ACTIONS_RUNTIME_TOKEN}" >> "$GITHUB_OUTPUT"
+
       - uses: dagger/dagger-for-github@v8.4.1
         with:
           version: "0.20.3"
@@ -25,3 +34,4 @@ jobs:
             --repo-url=${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG: ${{ steps.cache-config.outputs.config }}
