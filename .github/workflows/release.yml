@@ -25,4 +25,3 @@ jobs:
             --repo-url=${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          _EXPERIMENTAL_DAGGER_RUNNER_HOST: ${{ secrets.EXPERIMENTAL_DAGGER_RUNNER_HOST }}
