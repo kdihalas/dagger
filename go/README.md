@@ -26,49 +26,49 @@ Build, test, lint, and containerize Go applications with Dagger.
 Extract Go version:
 
 ```bash
-dagger call -m go --source . go-version
+dagger call -m github.com/kdihalas/dagger/go --source . go-version
 ```
 
 Run tests:
 
 ```bash
-dagger call -m go --source . test
+dagger call -m github.com/kdihalas/dagger/go --source . test
 ```
 
 Run tests with arguments:
 
 ```bash
-dagger call -m go --source . test --args "-v" --args "-race"
+dagger call -m github.com/kdihalas/dagger/go --source . test --args "-v" --args "-race"
 ```
 
 Run linter:
 
 ```bash
-dagger call -m go --source . lint
+dagger call -m github.com/kdihalas/dagger/go --source . lint
 ```
 
 Build a binary:
 
 ```bash
-dagger call -m go --source . build
+dagger call -m github.com/kdihalas/dagger/go --source . build
 ```
 
 Build a production container:
 
 ```bash
-dagger call -m go --source . container
+dagger call -m github.com/kdihalas/dagger/go --source . container
 ```
 
 Build a debug container (Alpine + shell):
 
 ```bash
-dagger call -m go --source . debug-container
+dagger call -m github.com/kdihalas/dagger/go --source . debug-container
 ```
 
 Publish to a registry:
 
 ```bash
-dagger call -m go --source . publish \
+dagger call -m github.com/kdihalas/dagger/go --source . publish \
   --image-name myapp:latest \
   --registry docker.io \
   --username myuser \
@@ -78,7 +78,7 @@ dagger call -m go --source . publish \
 Publish multiple image tags:
 
 ```bash
-dagger call -m go --source . publish \
+dagger call -m github.com/kdihalas/dagger/go --source . publish \
   --image-name myapp:latest,myapp:v1.0.0 \
   --registry docker.io \
   --username myuser \
@@ -107,15 +107,15 @@ jobs:
         with:
           version: "0.20.3"
       - name: Run tests
-        run: dagger -m go call --source . test
+        run: dagger -m github.com/kdihalas/dagger/go call --source . test
       - name: Run linter
-        run: dagger -m go call --source . lint
+        run: dagger -m github.com/kdihalas/dagger/go call --source . lint
       - name: Build binary
-        run: dagger -m go call --source . build
+        run: dagger -m github.com/kdihalas/dagger/go call --source . build
       - name: Build container
-        run: dagger -m go call --source . container --path .
+        run: dagger -m github.com/kdihalas/dagger/go call --source . container --path .
       - name: Publish container
-        run: dagger -m go call --source . publish \
+        run: dagger -m github.com/kdihalas/dagger/go call --source . publish \
           --path . \
           --image-name myapp:latest \
           --registry docker.io \

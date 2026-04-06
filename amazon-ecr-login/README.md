@@ -40,7 +40,7 @@ Log in to Amazon ECR private registries and ECR Public (public.ecr.aws) from Dag
 ### Private ECR (default account)
 
 ```bash
-dagger call -m amazon-ecr-login \
+dagger call -m github.com/kdihalas/dagger/amazon-ecr-login \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --region us-east-1 \
@@ -50,7 +50,7 @@ dagger call -m amazon-ecr-login \
 ### Private ECR (multiple accounts)
 
 ```bash
-dagger call -m amazon-ecr-login \
+dagger call -m github.com/kdihalas/dagger/amazon-ecr-login \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --region us-east-1 \
@@ -62,7 +62,7 @@ dagger call -m amazon-ecr-login \
 ### ECR Public
 
 ```bash
-dagger call -m amazon-ecr-login \
+dagger call -m github.com/kdihalas/dagger/amazon-ecr-login \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   with-public-registry-auth --ctr alpine:latest
@@ -71,7 +71,7 @@ dagger call -m amazon-ecr-login \
 ### Get raw credentials
 
 ```bash
-dagger call -m amazon-ecr-login \
+dagger call -m github.com/kdihalas/dagger/amazon-ecr-login \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --region us-east-1 \
@@ -98,7 +98,7 @@ jobs:
         with:
           version: "0.20.3"
       - name: Login and push to ECR
-        run: dagger -m amazon-ecr-login \
+        run: dagger -m github.com/kdihalas/dagger/amazon-ecr-login \
           --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
           --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }} \
           --region us-east-1 \
@@ -124,7 +124,7 @@ jobs:
         with:
           version: "0.20.3"
       - name: Login to ECR Public
-        run: dagger -m amazon-ecr-login \
+        run: dagger -m github.com/kdihalas/dagger/amazon-ecr-login \
           --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
           --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }} \
           call with-public-registry-auth \
@@ -137,7 +137,7 @@ Use the `aws-config` Dagger module to assume an IAM role, then pass the temporar
 
 ```bash
 # Step 1: Assume role with aws-config
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --region us-east-1 \
@@ -146,7 +146,7 @@ dagger call -m configure-aws-credentials \
     --session-name "ecr-push"
 
 # Step 2: Use the assumed credentials with amazon-ecr-login
-dagger call -m amazon-ecr-login \
+dagger call -m github.com/kdihalas/dagger/amazon-ecr-login \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --session-token env:AWS_SESSION_TOKEN \
@@ -159,14 +159,14 @@ dagger call -m amazon-ecr-login \
 Use the `aws-config` module's OIDC web identity support to assume a role without static credentials, then log in to ECR:
 
 ```bash
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --region us-east-1 \
   assume-role-with-web-identity \
     --role-arn "arn:aws:iam::123456789012:role/GHActionsECRRole" \
     --web-identity-token env:ACTIONS_ID_TOKEN
 
 # Then use the exported credentials with amazon-ecr-login
-dagger call -m amazon-ecr-login \
+dagger call -m github.com/kdihalas/dagger/amazon-ecr-login \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --session-token env:AWS_SESSION_TOKEN \
@@ -204,13 +204,13 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
           echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
       - name: Assume role via aws-config
-        run: dagger -m configure-aws-credentials \
+        run: dagger -m github.com/kdihalas/dagger/configure-aws-credentials \
           --region us-east-1 \
           call assume-role-with-web-identity \
             --role-arn "arn:aws:iam::123456789012:role/GHActionsECRRole" \
             --web-identity-token "${{ steps.oidc.outputs.token }}"
       - name: Login to ECR and push
-        run: dagger -m amazon-ecr-login \
+        run: dagger -m github.com/kdihalas/dagger/amazon-ecr-login \
           --access-key-id env:AWS_ACCESS_KEY_ID \
           --secret-access-key env:AWS_SECRET_ACCESS_KEY \
           --session-token env:AWS_SESSION_TOKEN \

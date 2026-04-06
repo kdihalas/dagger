@@ -12,6 +12,7 @@ Reusable Dagger modules for building, testing, and releasing software.
 |--------|-------------|
 | [amazon-ecr-login](./amazon-ecr-login) | Log in to Amazon ECR and ECR Public registries |
 | [configure-aws-credentials](./configure-aws-credentials) | Configure AWS credentials (static, role assumption, OIDC) |
+| [helm](./helm) | Manage Helm chart lifecycle: template, lint, package, push, install, upgrade, rollback, uninstall |
 | [go](./go) | Build, test, lint, and containerize Go applications |
 | [npm](./npm) | Build, test, lint, and containerize Node.js applications |
 | [python](./python) | Build, test, lint, and containerize Python applications |
@@ -22,7 +23,7 @@ Reusable Dagger modules for building, testing, and releasing software.
 ### Amazon ECR Login Module
 
 ```bash
-dagger call -m amazon-ecr-login \
+dagger call -m github.com/kdihalas/dagger/amazon-ecr-login \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --region us-east-1 \
@@ -32,34 +33,40 @@ dagger call -m amazon-ecr-login \
 ### AWS Config Module
 
 ```bash
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   with-credentials --ctr alpine:latest
 ```
 
+### Helm Module
+
+```bash
+dagger call -m github.com/kdihalas/dagger/helm --source ./my-chart lint
+```
+
 ### Go Module
 
 ```bash
-dagger call -m go --source . build
+dagger call -m github.com/kdihalas/dagger/go --source . build
 ```
 
 ### NPM Module
 
 ```bash
-dagger call -m npm --source . build --out-dir dist
+dagger call -m github.com/kdihalas/dagger/npm --source . build --out-dir dist
 ```
 
 ### Python Module
 
 ```bash
-dagger call -m python --source . test
+dagger call -m github.com/kdihalas/dagger/python --source . test
 ```
 
 ### Release-Please Module
 
 ```bash
-dagger call -m release-please --token env:GITHUB_TOKEN release-pr \
+dagger call -m github.com/kdihalas/dagger/release-please --token env:GITHUB_TOKEN release-pr \
   --release-type go \
   --repo-url github.com/owner/repo
 ```

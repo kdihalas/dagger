@@ -29,6 +29,17 @@ jobs:
       - name: Validate module
         run: dagger -m ./aws-config functions
 
+  helm-module:
+    name: Validate Helm module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./helm functions
+
   go-module:
     name: Validate Go module
     runs-on: ubuntu-latest

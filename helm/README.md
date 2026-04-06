@@ -52,13 +52,13 @@ dagger call -m helm --source ./my-chart lint
 ### Render templates
 
 ```bash
-dagger call -m helm --source ./my-chart template --release-name my-release
+dagger call -m github.com/kdihalas/dagger/helm --source ./my-chart template --release-name my-release
 ```
 
 ### Render with custom values
 
 ```bash
-dagger call -m helm --source ./my-chart template \
+dagger call -m github.com/kdihalas/dagger/helm --source ./my-chart template \
   --release-name my-release \
   --values ./values-prod.yaml \
   --set "image.tag=v1.2.3"
@@ -67,13 +67,13 @@ dagger call -m helm --source ./my-chart template \
 ### Package a chart
 
 ```bash
-dagger call -m helm --source ./my-chart package --version 1.0.0
+dagger call -m github.com/kdihalas/dagger/helm --source ./my-chart package --version 1.0.0
 ```
 
 ### Push to OCI registry
 
 ```bash
-dagger call -m helm \
+dagger call -m github.com/kdihalas/dagger/helm \
   --source ./my-chart \
   --registry-username myuser \
   --registry-password env:REGISTRY_PASSWORD \
@@ -83,7 +83,7 @@ dagger call -m helm \
 ### Install a release
 
 ```bash
-dagger call -m helm \
+dagger call -m github.com/kdihalas/dagger/helm \
   --source ./my-chart \
   --kubeconfig env:KUBECONFIG \
   install \
@@ -95,7 +95,7 @@ dagger call -m helm \
 ### Upgrade with install fallback
 
 ```bash
-dagger call -m helm \
+dagger call -m github.com/kdihalas/dagger/helm \
   --source ./my-chart \
   --kubeconfig env:KUBECONFIG \
   upgrade \
@@ -108,7 +108,7 @@ dagger call -m helm \
 ### Rollback to previous revision
 
 ```bash
-dagger call -m helm \
+dagger call -m github.com/kdihalas/dagger/helm \
   --kubeconfig env:KUBECONFIG \
   rollback \
     --release-name my-app \
@@ -118,7 +118,7 @@ dagger call -m helm \
 ### Rollback to specific revision
 
 ```bash
-dagger call -m helm \
+dagger call -m github.com/kdihalas/dagger/helm \
   --kubeconfig env:KUBECONFIG \
   rollback \
     --release-name my-app \
@@ -129,7 +129,7 @@ dagger call -m helm \
 ### Uninstall a release
 
 ```bash
-dagger call -m helm \
+dagger call -m github.com/kdihalas/dagger/helm \
   --kubeconfig env:KUBECONFIG \
   uninstall \
     --release-name my-app \
@@ -158,9 +158,9 @@ jobs:
         with:
           version: "0.20.3"
       - name: Lint chart
-        run: dagger -m helm call --source ./my-chart lint
+        run: dagger -m github.com/kdihalas/dagger/helm call --source ./my-chart lint
       - name: Package chart
-        run: dagger -m helm call --source ./my-chart package --version 1.0.0
+        run: dagger -m github.com/kdihalas/dagger/helm call --source ./my-chart package --version 1.0.0
 ```
 
 ### Push to OCI Registry
@@ -181,7 +181,7 @@ jobs:
         with:
           version: "0.20.3"
       - name: Push chart
-        run: dagger -m helm \
+        run: dagger -m github.com/kdihalas/dagger/helm \
           --source ./my-chart \
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
@@ -206,7 +206,7 @@ jobs:
         with:
           version: "0.20.3"
       - name: Deploy
-        run: dagger -m helm \
+        run: dagger -m github.com/kdihalas/dagger/helm \
           --source ./my-chart \
           --kubeconfig ${{ secrets.KUBECONFIG }} \
           call upgrade \
@@ -241,7 +241,7 @@ jobs:
         with:
           version: "0.20.3"
       - name: Push chart to ECR
-        run: dagger -m helm \
+        run: dagger -m github.com/kdihalas/dagger/helm \
           --source ./my-chart \
           --registry-username AWS \
           --registry-password env:ECR_PASSWORD \

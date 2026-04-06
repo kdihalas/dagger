@@ -37,61 +37,61 @@ The module auto-detects the package manager:
 Extract Python version:
 
 ```bash
-dagger call -m python --source . python-version
+dagger call -m github.com/kdihalas/dagger/python --source . python-version
 ```
 
 Run tests:
 
 ```bash
-dagger call -m python --source . test
+dagger call -m github.com/kdihalas/dagger/python --source . test
 ```
 
 Run tests with arguments:
 
 ```bash
-dagger call -m python --source . test --args "-v" --args "--tb=short"
+dagger call -m github.com/kdihalas/dagger/python --source . test --args "-v" --args "--tb=short"
 ```
 
 Use a different test runner:
 
 ```bash
-dagger call -m python --source . test --runner unittest
+dagger call -m github.com/kdihalas/dagger/python --source . test --runner unittest
 ```
 
 Run linter:
 
 ```bash
-dagger call -m python --source . lint
+dagger call -m github.com/kdihalas/dagger/python --source . lint
 ```
 
 Use a different linter:
 
 ```bash
-dagger call -m python --source . lint --linter flake8
+dagger call -m github.com/kdihalas/dagger/python --source . lint --linter flake8
 ```
 
 Build distribution:
 
 ```bash
-dagger call -m python --source . build
+dagger call -m github.com/kdihalas/dagger/python --source . build
 ```
 
 Build a production container:
 
 ```bash
-dagger call -m python --source . container --entrypoint python --entrypoint-args "-m,myapp"
+dagger call -m github.com/kdihalas/dagger/python --source . container --entrypoint python --entrypoint-args "-m,myapp"
 ```
 
 Build a debug container:
 
 ```bash
-dagger call -m python --source . debug-container
+dagger call -m github.com/kdihalas/dagger/python --source . debug-container
 ```
 
 Publish to a registry:
 
 ```bash
-dagger call -m python --source . publish \
+dagger call -m github.com/kdihalas/dagger/python --source . publish \
   --entrypoint python \
   --entrypoint-args "-m,myapp" \
   --image-name myapp:latest \
@@ -122,17 +122,17 @@ jobs:
         with:
           version: "0.20.3"
       - name: Run tests
-        run: dagger -m python call --source . test
+        run: dagger -m github.com/kdihalas/dagger/python call --source . test
       - name: Run linter
-        run: dagger -m python call --source . lint
+        run: dagger -m github.com/kdihalas/dagger/python call --source . lint
       - name: Build distribution
-        run: dagger -m python call --source . build --out-dir dist
+        run: dagger -m github.com/kdihalas/dagger/python call --source . build --out-dir dist
       - name: Build container
         run: dagger -m python call --source . container \
-          --entrypoint python \
+          --entrypoint github.com/kdihalas/dagger/python \
           --entrypoint-args "-m,myapp"
       - name: Publish container
-        run: dagger -m python call --source . publish \
+        run: dagger -m github.com/kdihalas/dagger/python call --source . publish \
           --entrypoint python \
           --entrypoint-args "-m,myapp" \
           --image-name myapp:latest \

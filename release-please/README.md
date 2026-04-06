@@ -1,6 +1,6 @@
-# Release-Please Module
+# github.com/kdihalas/dagger/release-please Module
 
-Automate GitHub releases with release-please using Dagger.
+Automate GitHub releases with github.com/kdihalas/dagger/release-please using Dagger.
 
 ## Requirements
 
@@ -23,17 +23,17 @@ Automate GitHub releases with release-please using Dagger.
 
 ## Usage Examples
 
-Initialize release-please in a repository:
+Initialize github.com/kdihalas/dagger/release-please in a repository:
 
 ```bash
-dagger call -m release-please --token env:GITHUB_TOKEN bootstrap \
+dagger call -m github.com/kdihalas/dagger/release-please --token env:GITHUB_TOKEN bootstrap \
   --repo-url github.com/owner/repo
 ```
 
 Create a release PR:
 
 ```bash
-dagger call -m release-please --token env:GITHUB_TOKEN release-pr \
+dagger call -m github.com/kdihalas/dagger/release-please --token env:GITHUB_TOKEN release-pr \
   --release-type go \
   --repo-url github.com/owner/repo
 ```
@@ -41,7 +41,7 @@ dagger call -m release-please --token env:GITHUB_TOKEN release-pr \
 Create a GitHub release (after PR is merged):
 
 ```bash
-dagger call -m release-please --token env:GITHUB_TOKEN github-release \
+dagger call -m github.com/kdihalas/dagger/release-please --token env:GITHUB_TOKEN github-release \
   --release-type go \
   --repo-url github.com/owner/repo
 ```
@@ -49,7 +49,7 @@ dagger call -m release-please --token env:GITHUB_TOKEN github-release \
 Create release PR and release in one command:
 
 ```bash
-dagger call -m release-please --token env:GITHUB_TOKEN run \
+dagger call -m github.com/kdihalas/dagger/release-please --token env:GITHUB_TOKEN run \
   --release-type go \
   --repo-url github.com/owner/repo
 ```
@@ -57,14 +57,14 @@ dagger call -m release-please --token env:GITHUB_TOKEN run \
 For a Node.js repository:
 
 ```bash
-dagger call -m release-please --token env:GITHUB_TOKEN release-pr \
+dagger call -m github.com/kdihalas/dagger/release-please --token env:GITHUB_TOKEN release-pr \
   --release-type node \
   --repo-url github.com/owner/repo
 ```
 
 ## GitHub Actions
 
-Use the release-please module in GitHub Actions to automate releases:
+Use the github.com/kdihalas/dagger/release-please module in GitHub Actions to automate releases:
 
 ```yaml
 name: Release
@@ -87,13 +87,13 @@ jobs:
         with:
           version: "0.20.3"
       - name: Create release PR
-        run: dagger -m release-please \
+        run: dagger -m github.com/kdihalas/dagger/release-please \
           --token ${{ secrets.GITHUB_TOKEN }} \
           call release-pr \
           --release-type go \
           --repo-url github.com/${{ github.repository }}
       - name: Create GitHub release
-        run: dagger -m release-please \
+        run: dagger -m github.com/kdihalas/dagger/release-please \
           --token ${{ secrets.GITHUB_TOKEN }} \
           call github-release \
           --release-type go \

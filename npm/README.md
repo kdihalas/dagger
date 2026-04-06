@@ -26,37 +26,37 @@ Build, test, lint, and containerize Node.js applications with Dagger. Auto-detec
 Extract Node version:
 
 ```bash
-dagger call -m npm --source . node-version
+dagger call -m github.com/kdihalas/dagger/npm --source . node-version
 ```
 
 Run tests:
 
 ```bash
-dagger call -m npm --source . test
+dagger call -m github.com/kdihalas/dagger/npm --source . test
 ```
 
 Run tests with arguments:
 
 ```bash
-dagger call -m npm --source . test --args "--coverage"
+dagger call -m github.com/kdihalas/dagger/npm --source . test --args "--coverage"
 ```
 
 Run linter:
 
 ```bash
-dagger call -m npm --source . lint
+dagger call -m github.com/kdihalas/dagger/npm --source . lint
 ```
 
 Build application:
 
 ```bash
-dagger call -m npm --source . build --out-dir dist
+dagger call -m github.com/kdihalas/dagger/npm --source . build --out-dir dist
 ```
 
 Publish container:
 
 ```bash
-dagger call -m npm --source . publish \
+dagger call -m github.com/kdihalas/dagger/npm --source . publish \
   --out-dir dist \
   --entrypoint index.js \
   --image-name myapp:latest \
@@ -68,7 +68,7 @@ dagger call -m npm --source . publish \
 Publish multiple tags:
 
 ```bash
-dagger call -m npm --source . publish \
+dagger call -m github.com/kdihalas/dagger/npm --source . publish \
   --out-dir dist \
   --entrypoint server.js \
   --image-name myapp:latest,myapp:v1.0.0 \
@@ -80,7 +80,7 @@ dagger call -m npm --source . publish \
 Debug container (Alpine with shell):
 
 ```bash
-dagger call -m npm --source . debug-container
+dagger call -m github.com/kdihalas/dagger/npm --source . debug-container
 ```
 
 ## GitHub Actions
@@ -105,17 +105,17 @@ jobs:
         with:
           version: "0.20.3"
       - name: Run tests
-        run: dagger -m npm call --source . test
+        run: dagger -m github.com/kdihalas/dagger/npm call --source . test
       - name: Run linter
-        run: dagger -m npm call --source . lint
+        run: dagger -m github.com/kdihalas/dagger/npm call --source . lint
       - name: Build application
-        run: dagger -m npm call --source . build --out-dir dist
+        run: dagger -m github.com/kdihalas/dagger/npm call --source . build --out-dir dist
       - name: Build container
-        run: dagger -m npm call --source . container \
+        run: dagger -m github.com/kdihalas/dagger/npm call --source . container \
           --out-dir dist \
           --entrypoint index.js
       - name: Publish container
-        run: dagger -m npm call --source . publish \
+        run: dagger -m github.com/kdihalas/dagger/npm call --source . publish \
           --out-dir dist \
           --entrypoint index.js \
           --image-name myapp:latest \

@@ -31,7 +31,7 @@ Configure AWS credentials for Dagger pipelines. Supports static credentials, IAM
 Apply credentials to a container:
 
 ```bash
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   --region us-west-2 \
@@ -41,7 +41,7 @@ dagger call -m configure-aws-credentials \
 ### Assume an IAM Role
 
 ```bash
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   assume-role \
@@ -54,7 +54,7 @@ dagger call -m configure-aws-credentials \
 ### Assume Role with External ID
 
 ```bash
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   assume-role \
@@ -66,7 +66,7 @@ dagger call -m configure-aws-credentials \
 ### OIDC Web Identity (GitHub Actions)
 
 ```bash
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --region us-east-1 \
   assume-role-with-web-identity \
     --role-arn "arn:aws:iam::123456789012:role/GHActionsRole" \
@@ -77,7 +77,7 @@ dagger call -m configure-aws-credentials \
 ### Scope Down Permissions with Inline Policy
 
 ```bash
-dagger call -m configure-aws-credentials \
+dagger call -m github.com/kdihalas/dagger/configure-aws-credentials \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   assume-role \
@@ -122,7 +122,7 @@ jobs:
         with:
           version: "0.20.3"
       - name: Configure AWS and deploy
-        run: dagger -m configure-aws-credentials \
+        run: dagger -m github.com/kdihalas/dagger/configure-aws-credentials \
           --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
           --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }} \
           --region us-east-1 \
@@ -153,7 +153,7 @@ jobs:
       - name: Get OIDC token
         run: echo "ACTIONS_ID_TOKEN=$(curl $ACTIONS_ID_TOKEN_REQUEST_URL)" >> $GITHUB_ENV
       - name: Assume role and deploy
-        run: dagger -m configure-aws-credentials \
+        run: dagger -m github.com/kdihalas/dagger/configure-aws-credentials \
           --region us-east-1 \
           call assume-role-with-web-identity \
           --role-arn "arn:aws:iam::123456789012:role/GHActionsRole" \
