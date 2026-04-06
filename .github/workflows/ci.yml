@@ -18,8 +18,8 @@ jobs:
       - name: Validate module
         run: dagger -m ./amazon-ecr-login functions
 
-  aws-config-module:
-    name: Validate aws-config module
+  configure-aws-credentials-module:
+    name: Validate configure-aws-credentials module
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -27,7 +27,7 @@ jobs:
         with:
           version: "0.20.3"
       - name: Validate module
-        run: dagger -m ./aws-config functions
+        run: dagger -m ./configure-aws-credentials functions
 
   helm-module:
     name: Validate Helm module
