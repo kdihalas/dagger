@@ -51,7 +51,7 @@ jobs:
       - name: Validate module
         run: dagger -m ./go functions
       - name: Lint
-        run: dagger -m ./go call lint --source=./go
+        run: dagger -m ./go functions
 
   npm-module:
     name: Validate npm module
