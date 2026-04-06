@@ -1,4 +1,8 @@
-// Retrieve secrets from HashiCorp Vault KV v2 engine using GitHub OIDC authentication.
+// Retrieve secrets from HashiCorp Vault KV v2 engine.
+//
+// Supports two authentication methods:
+//   - Token: provide --token directly
+//   - GitHub OIDC: provide --github-token and --role
 package main
 
 import (
@@ -19,15 +23,20 @@ var (
 
 const vaultImage = "hashicorp/vault:1.19"
 
-// VaultAction retrieves secrets from HashiCorp Vault using GitHub OIDC authentication.
+// VaultAction retrieves secrets from HashiCorp Vault.
 type VaultAction struct {
 	// Vault server URL (e.g., https://vault.example.com:8200).
 	URL string
-	// GitHub OIDC token (JWT) for Vault authentication.
+	// Vault authentication token (for token-based auth).
+	// +optional
+	Token *dagger.Secret
+	// GitHub OIDC token (JWT) for Vault JWT auth.
+	// +optional
 	GithubToken *dagger.Secret
-	// Vault JWT auth role name.
+	// Vault JWT auth role name (required with github-token).
+	// +optional
 	Role string
-	// Vault JWT auth mount path.
+	// Vault JWT auth mount path (used with github-token).
 	// +optional
 	// +default="jwt"
 	AuthMount string
@@ -39,11 +48,16 @@ type VaultAction struct {
 func New(
 	// Vault server URL (e.g., https://vault.example.com:8200).
 	url string,
-	// GitHub OIDC token (JWT) for Vault authentication.
+	// Vault authentication token (for token-based auth).
+	// +optional
+	token *dagger.Secret,
+	// GitHub OIDC token (JWT) for Vault JWT auth.
+	// +optional
 	githubToken *dagger.Secret,
-	// Vault JWT auth role name.
+	// Vault JWT auth role name (required with github-token).
+	// +optional
 	role string,
-	// Vault JWT auth mount path.
+	// Vault JWT auth mount path (used with github-token).
 	// +optional
 	// +default="jwt"
 	authMount string,
@@ -56,6 +70,7 @@ func New(
 	}
 	return &VaultAction{
 		URL:         url,
+		Token:       token,
 		GithubToken: githubToken,
 		Role:        role,
 		AuthMount:   authMount,
@@ -63,29 +78,44 @@ func New(
 	}
 }
 
-func (v *VaultAction) base() *dagger.Container {
+func (v *VaultAction) base() (*dagger.Container, error) {
+	if err := v.validate(); err != nil {
+		return nil, err
+	}
+
 	ctr := dag.Container().
 		From(vaultImage).
-		WithEnvVariable("VAULT_ADDR", v.URL).
-		WithSecretVariable("GITHUB_OIDC_TOKEN", v.GithubToken)
+		WithEnvVariable("VAULT_ADDR", v.URL)
+
 	if v.Namespace != "" {
 		ctr = ctr.WithEnvVariable("VAULT_NAMESPACE", v.Namespace)
 	}
-	// Authenticate with Vault using the GitHub OIDC JWT and export the resulting token.
-	ctr = ctr.WithExec([]string{
-		"sh", "-c",
-		fmt.Sprintf(
-			`export VAULT_TOKEN=$(vault write -field=token auth/%s/login role=%s jwt="$GITHUB_OIDC_TOKEN") && echo "$VAULT_TOKEN" > /tmp/.vault-token`,
-			v.AuthMount, v.Role,
-		),
-	}).WithEnvVariable("VAULT_TOKEN", "").
-		WithExec([]string{"sh", "-c", `export VAULT_TOKEN=$(cat /tmp/.vault-token) && echo "$VAULT_TOKEN" > /dev/null`})
 
-	return ctr
+	if v.Token != nil {
+		// Token-based auth: set VAULT_TOKEN directly.
+		return ctr.WithSecretVariable("VAULT_TOKEN", v.Token), nil
+	}
+
+	// GitHub OIDC auth: login via JWT and persist the resulting token.
+	ctr = ctr.
+		WithSecretVariable("GITHUB_OIDC_TOKEN", v.GithubToken).
+		WithExec([]string{
+			"sh", "-c",
+			fmt.Sprintf(
+				`vault write -field=token auth/%s/login role=%s jwt="$GITHUB_OIDC_TOKEN" > /tmp/.vault-token`,
+				v.AuthMount, v.Role,
+			),
+		})
+
+	return ctr, nil
 }
 
-// wrapCmd wraps a vault command so it runs with the OIDC-derived token.
-func (v *VaultAction) wrapCmd(args string) []string {
+// execCmd returns the exec args for a vault command, handling the token source
+// difference between token auth (VAULT_TOKEN env) and OIDC auth (file).
+func (v *VaultAction) execCmd(args string) []string {
+	if v.Token != nil {
+		return []string{"sh", "-c", args}
+	}
 	return []string{
 		"sh", "-c",
 		fmt.Sprintf(`export VAULT_TOKEN=$(cat /tmp/.vault-token) && %s`, args),
@@ -106,9 +136,6 @@ func (v *VaultAction) GetSecret(
 	// +default="vault-secret"
 	name string,
 ) (*dagger.Secret, error) {
-	if err := v.validate(); err != nil {
-		return nil, err
-	}
 	if !validMountPath.MatchString(mount) {
 		return nil, fmt.Errorf("invalid mount path: %q", mount)
 	}
@@ -119,8 +146,13 @@ func (v *VaultAction) GetSecret(
 		return nil, fmt.Errorf("invalid key: %q", key)
 	}
 
-	out, err := v.base().
-		WithExec(v.wrapCmd(fmt.Sprintf(
+	ctr, err := v.base()
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := ctr.
+		WithExec(v.execCmd(fmt.Sprintf(
 			`vault kv get -mount=%s -field=%s %s`,
 			mount, key, path,
 		))).
@@ -140,9 +172,6 @@ func (v *VaultAction) GetSecretJSON(
 	// Secret path within the mount (e.g., "data/myapp/config").
 	path string,
 ) (string, error) {
-	if err := v.validate(); err != nil {
-		return "", err
-	}
 	if !validMountPath.MatchString(mount) {
 		return "", fmt.Errorf("invalid mount path: %q", mount)
 	}
@@ -150,8 +179,13 @@ func (v *VaultAction) GetSecretJSON(
 		return "", fmt.Errorf("invalid secret path: %q", path)
 	}
 
-	out, err := v.base().
-		WithExec(v.wrapCmd(fmt.Sprintf(
+	ctr, err := v.base()
+	if err != nil {
+		return "", err
+	}
+
+	out, err := ctr.
+		WithExec(v.execCmd(fmt.Sprintf(
 			`vault kv get -mount=%s -format=json %s`,
 			mount, path,
 		))).
@@ -167,11 +201,27 @@ func (v *VaultAction) validate() error {
 	if !validURL.MatchString(v.URL) {
 		return fmt.Errorf("invalid vault URL: %q", v.URL)
 	}
-	if !validRole.MatchString(v.Role) {
-		return fmt.Errorf("invalid role: %q", v.Role)
+
+	hasToken := v.Token != nil
+	hasOIDC := v.GithubToken != nil
+
+	if !hasToken && !hasOIDC {
+		return fmt.Errorf("provide either --token or --github-token with --role")
 	}
-	if !validMountPath.MatchString(v.AuthMount) {
-		return fmt.Errorf("invalid auth mount: %q", v.AuthMount)
+	if hasToken && hasOIDC {
+		return fmt.Errorf("provide either --token or --github-token, not both")
 	}
+	if hasOIDC {
+		if v.Role == "" {
+			return fmt.Errorf("--role is required when using --github-token")
+		}
+		if !validRole.MatchString(v.Role) {
+			return fmt.Errorf("invalid role: %q", v.Role)
+		}
+		if !validMountPath.MatchString(v.AuthMount) {
+			return fmt.Errorf("invalid auth mount: %q", v.AuthMount)
+		}
+	}
+
 	return nil
 }

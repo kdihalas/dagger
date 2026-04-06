@@ -1,22 +1,29 @@
 # Vault Action
 
-Retrieve secrets from HashiCorp Vault KV v2 engine using GitHub OIDC (JWT) authentication.
+Retrieve secrets from HashiCorp Vault KV v2 engine.
+
+Supports two authentication methods:
+- **Token**: provide `--token` directly
+- **GitHub OIDC**: provide `--github-token` and `--role`
 
 ## Requirements
 
 - Dagger v0.20.3 or later
-- A running HashiCorp Vault instance with JWT auth method configured
-- A GitHub Actions workflow with `id-token: write` permission
+- A running HashiCorp Vault instance
+- Either a Vault token or a GitHub OIDC token with a configured JWT auth backend
 
 ## Constructor Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `url` | `string` | yes | — | Vault server URL (e.g., `https://vault.example.com:8200`) |
-| `github-token` | `Secret` | yes | — | GitHub OIDC token (JWT) |
-| `role` | `string` | yes | — | Vault JWT auth role name |
+| `token` | `Secret` | no* | — | Vault authentication token |
+| `github-token` | `Secret` | no* | — | GitHub OIDC token (JWT) |
+| `role` | `string` | no* | — | Vault JWT auth role name (required with `github-token`) |
 | `auth-mount` | `string` | no | `jwt` | Vault JWT auth mount path |
 | `namespace` | `string` | no | `""` | Vault namespace (for Vault Enterprise) |
+
+\* Provide either `--token` or `--github-token` + `--role`.
 
 ## Functions
 
@@ -43,7 +50,16 @@ Retrieve secrets from HashiCorp Vault KV v2 engine using GitHub OIDC (JWT) authe
 
 ## Usage
 
-### Read a single secret field
+### Token Auth
+
+```bash
+dagger call -m github.com/kdihalas/dagger/vault-action \
+  --url https://vault.example.com:8200 \
+  --token env:VAULT_TOKEN \
+  get-secret --mount secret --path myapp/config --key api-key
+```
+
+### GitHub OIDC Auth
 
 ```bash
 dagger call -m github.com/kdihalas/dagger/vault-action \
@@ -58,37 +74,65 @@ dagger call -m github.com/kdihalas/dagger/vault-action \
 ```bash
 dagger call -m github.com/kdihalas/dagger/vault-action \
   --url https://vault.example.com:8200 \
-  --github-token env:GITHUB_OIDC_TOKEN \
-  --role my-github-role \
+  --token env:VAULT_TOKEN \
   get-secret-json --mount secret --path myapp/config
 ```
 
-### Use with Vault Enterprise namespaces
+### Vault Enterprise namespaces
 
 ```bash
 dagger call -m github.com/kdihalas/dagger/vault-action \
   --url https://vault.example.com:8200 \
-  --github-token env:GITHUB_OIDC_TOKEN \
-  --role my-github-role \
+  --token env:VAULT_TOKEN \
   --namespace admin/team-a \
   get-secret --mount secret --path myapp/config --key db-password
 ```
 
-### Use in a Dagger pipeline (Go SDK)
+### Go SDK
 
 ```go
+// Token auth
 secret := dag.VaultAction(
     "https://vault.example.com:8200",
-    dag.SetSecret("oidc-token", os.Getenv("GITHUB_OIDC_TOKEN")),
-    "my-github-role",
+    dagger.VaultActionOpts{
+        Token: dag.SetSecret("vault-token", os.Getenv("VAULT_TOKEN")),
+    },
 ).GetSecret("secret", "myapp/config", "db-password")
 
-ctr := dag.Container().
-    From("alpine:latest").
-    WithSecretVariable("DB_PASSWORD", secret)
+// OIDC auth
+secret := dag.VaultAction(
+    "https://vault.example.com:8200",
+    dagger.VaultActionOpts{
+        GithubToken: dag.SetSecret("oidc-token", os.Getenv("GITHUB_OIDC_TOKEN")),
+        Role:        "my-github-role",
+    },
+).GetSecret("secret", "myapp/config", "db-password")
 ```
 
 ## GitHub Actions
+
+### With Token
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Get secret from Vault
+        run: |
+          dagger call -m github.com/kdihalas/dagger/vault-action \
+            --url ${{ secrets.VAULT_URL }} \
+            --token env:VAULT_TOKEN \
+            get-secret --mount secret --path myapp/config --key api-key
+        env:
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+```
+
+### With GitHub OIDC
 
 ```yaml
 jobs:
@@ -118,20 +162,17 @@ jobs:
           GITHUB_OIDC_TOKEN: ${{ steps.oidc.outputs.result }}
 ```
 
-## Vault Configuration
+## Vault OIDC Configuration
 
-To use this module, configure Vault's JWT auth method to trust GitHub's OIDC provider:
+To use GitHub OIDC, configure Vault's JWT auth method:
 
 ```bash
-# Enable JWT auth method
 vault auth enable jwt
 
-# Configure with GitHub's OIDC discovery
 vault write auth/jwt/config \
   oidc_discovery_url="https://token.actions.githubusercontent.com" \
   bound_issuer="https://token.actions.githubusercontent.com"
 
-# Create a role bound to your repository
 vault write auth/jwt/role/my-github-role \
   bound_audiences="https://vault.example.com:8200" \
   bound_claims_type="glob" \
