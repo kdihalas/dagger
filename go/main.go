@@ -1,17 +1,4 @@
-// A generated module for Go functions
-//
-// This module has been generated via dagger init and serves as a reference to
-// basic module structure as you get started with Dagger.
-//
-// Two functions have been pre-created. You can modify, delete, or add to them,
-// as needed. They demonstrate usage of arguments and return types using simple
-// echo and grep commands. The functions can be called from the dagger CLI or
-// from one of the SDKs.
-//
-// The first line in this comment block is a short description line and the
-// rest is a long description with more detail on the module's purpose or usage,
-// if appropriate. All modules should have a short description.
-
+// Build, test, lint, and containerize Go applications.
 package main
 
 import (
@@ -21,14 +8,16 @@ import (
 	"regexp"
 )
 
-// goVersionRegex is a regular expression to extract the Go version from the go.mod file.
-// It looks for a line like "go 1.16" and captures the version number.
-var goVersionRegex = regexp.MustCompile(`(?m)^go (\d+\.\d+(?:\.\d+)?)$`)
+var (
+	goVersionRegex = regexp.MustCompile(`(?m)^go (\d+\.\d+(?:\.\d+)?)$`)
+	validImageRef  = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._\-/]*(:[a-zA-Z0-9._\-]+)?$`)
+)
 
 const (
-	MOUNT_PATH        = "/src"
-	DEBUG_CONTAINER   = "alpine:latest"
-	RUNTIME_CONTAINER = "gcr.io/distroless/static-debian13"
+	mountPath        = "/src"
+	debugBase        = "alpine:latest"
+	runtimeBase      = "gcr.io/distroless/static-debian13"
+	golangciLintTag  = "v2.11.4"
 )
 
 type Go struct {
@@ -36,7 +25,6 @@ type Go struct {
 }
 
 func New(
-	// The source directory to use for Go commands. This should contain a go.mod file.
 	// +optional
 	// +defaultPath=.
 	source *dagger.Directory,
@@ -44,141 +32,169 @@ func New(
 	return &Go{Source: source}
 }
 
-// GoVersion returns the Go version specified in the go.mod file, or "unknown" if it cannot be determined.
-func (g *Go) GoVersion(ctx context.Context) string {
-	goModFile, err := g.Source.File("go.mod").Contents(ctx)
+// GoVersion extracts the Go version from go.mod.
+func (g *Go) GoVersion(ctx context.Context) (string, error) {
+	contents, err := g.Source.File("go.mod").Contents(ctx)
 	if err != nil {
-		panic("go.mod file not found in source directory")
+		return "", fmt.Errorf("reading go.mod: %w", err)
 	}
-	version := "unknown"
-	// Extract the Go version from the go.mod file if it exists.
-	matches := goVersionRegex.FindStringSubmatch(goModFile)
-	if len(matches) == 2 {
-		version = matches[1]
+	matches := goVersionRegex.FindStringSubmatch(contents)
+	if len(matches) != 2 {
+		return "", fmt.Errorf("could not determine Go version from go.mod")
 	}
-	return version
+	return matches[1], nil
 }
 
-// Base returns a container with the Go source code mounted at /src and the working directory set to /src.
-func (g *Go) Base(ctx context.Context) *dagger.Container {
-	version := g.GoVersion(ctx)
-	// Use the Go version specified in the go.mod file if it exists, otherwise use the latest version.
-	return dag.Container().From("golang:"+version).WithDirectory(MOUNT_PATH, g.Source).WithWorkdir(MOUNT_PATH)
+// Base returns a container with Go and the source mounted.
+func (g *Go) Base(ctx context.Context) (*dagger.Container, error) {
+	version, err := g.GoVersion(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dag.Container().
+		From("golang:"+version).
+		WithDirectory(mountPath, g.Source).
+		WithWorkdir(mountPath), nil
 }
 
-// Download runs the `go mod download` command in the source directory to download Go module dependencies.
-func (g *Go) Download(ctx context.Context) *dagger.Container {
-	// Check if go.mod and go.sum files exist in the source directory
-	if exists, _ := g.Source.Exists(ctx, "go.mod"); !exists {
-		panic("go.mod file not found in source directory")
+// Download runs go mod download, running go mod tidy first if go.sum is missing.
+func (g *Go) Download(ctx context.Context) (*dagger.Container, error) {
+	base, err := g.Base(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if exists, _ := g.Source.Exists(ctx, "go.sum"); !exists {
-		g.Base(ctx).WithExec([]string{"go", "mod", "tidy"})
+		base = base.WithExec([]string{"go", "mod", "tidy"})
 	}
-	return g.Base(ctx).WithExec([]string{"go", "mod", "download"})
+	return base.WithExec([]string{"go", "mod", "download"}), nil
 }
 
-// Lint runs the `golangci-lint run` command in the source directory to lint the Go code. It uses the latest version of golangci-lint.
+// Lint runs golangci-lint.
 func (g *Go) Lint(
 	ctx context.Context,
-	// Lint args to pass to the golangci-lint command (e.g., "--fast", "--enable=golint"). These are optional and default to an empty list.
 	// +optional
 	// +default=[]
 	args []string,
 ) (string, error) {
-	commands := []string{"golangci-lint", "run"}
-	commands = append(commands, args...)
-	return dag.Container().From("golangci/golangci-lint:v2.11.4").WithDirectory(MOUNT_PATH, g.Source).WithWorkdir(MOUNT_PATH).WithExec(commands).Stdout(ctx)
+	cmd := []string{"golangci-lint", "run"}
+	cmd = append(cmd, args...)
+	return dag.Container().
+		From("golangci/golangci-lint:"+golangciLintTag).
+		WithDirectory(mountPath, g.Source).
+		WithWorkdir(mountPath).
+		WithExec(cmd).
+		Stdout(ctx)
 }
 
-// Test runs the `go test` command in the source directory.
+// Test runs go test ./... with optional args.
 // +check
 func (g *Go) Test(
 	ctx context.Context,
-	// Test args
 	// +optional
 	// +default=[]
 	args []string,
 ) (string, error) {
-	commands := []string{"go", "test"}
-	commands = append(commands, args...)
-	// Run tests with the specified flags and arguments
-	commands = append(commands, "./...")
-	return g.Download(ctx).WithExec(commands).Stdout(ctx)
+	ctr, err := g.Download(ctx)
+	if err != nil {
+		return "", err
+	}
+	cmd := []string{"go", "test"}
+	cmd = append(cmd, args...)
+	cmd = append(cmd, "./...")
+	return ctr.WithExec(cmd).Stdout(ctx)
 }
 
-// Build runs the `go build` command in the source directory.
+// Build compiles a statically-linked Linux binary.
 func (g *Go) Build(
 	ctx context.Context,
-	// The path to the Go package or file to build.
 	// +optional
 	// +default=.
-	path string) *dagger.Directory {
-	// CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s"
-	return g.
-		Download(ctx).
+	path string,
+) (*dagger.Directory, error) {
+	ctr, err := g.Download(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ctr.
 		WithEnvVariable("CGO_ENABLED", "0").
 		WithEnvVariable("GOOS", "linux").
 		WithExec([]string{"go", "build", "-ldflags=-w -s", "-o", "/out/app", path}).
-		Directory("/out")
+		Directory("/out"), nil
 }
 
-// Container builds the Go application and creates a container with the built binary.
+// Container builds the app into a distroless production container.
 func (g *Go) Container(
 	ctx context.Context,
-	// The path to the Go package or file to build.
 	// +optional
 	// +default=.
 	path string,
-) *dagger.Container {
-	// Build the Go application
-	binary := g.Build(ctx, path).File("app")
-	// Create a container with the built binary
-	return dag.Container().From(RUNTIME_CONTAINER).WithFile("/app", binary).WithWorkdir("/").WithEntrypoint([]string{"/app"})
+) (*dagger.Container, error) {
+	out, err := g.Build(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	return dag.Container().
+		From(runtimeBase).
+		WithFile("/app", out.File("app")).
+		WithEntrypoint([]string{"/app"}), nil
 }
 
-// DebugContainer builds the Go application and creates a container with the built binary, using a debug-friendly base image.
+// DebugContainer builds the app into an Alpine-based container for debugging.
 func (g *Go) DebugContainer(
 	ctx context.Context,
-	// The path to the Go package or file to build.
 	// +optional
 	// +default=.
 	path string,
-) *dagger.Container {
-	// Build the Go application
-	binary := g.Build(ctx, path).File("app")
-	// Create a container with the built binary
-	return dag.Container().From(DEBUG_CONTAINER).WithFile("/app", binary).WithWorkdir("/").WithEntrypoint([]string{"/app"})
+) (*dagger.Container, error) {
+	out, err := g.Build(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	return dag.Container().
+		From(debugBase).
+		WithFile("/app", out.File("app")).
+		WithEntrypoint([]string{"/app"}), nil
 }
 
-// Publish builds the Go application and pushes it to a container registry with the specified image name and registry credentials.
+// Publish builds and pushes the container to a registry, returning published references.
 func (g *Go) Publish(
 	ctx context.Context,
-	// The path to the Go package or file to build.
 	// +optional
 	// +default=.
 	path string,
-	// imageName is the name of the container image to publish, including the tag (e.g., "my-nginx:latest").
-	// +optional
-	// +default=[]
+	// Image names including tags (e.g., "myapp:latest").
+	// +required
 	imageName []string,
-	// Registry is the registry to which the container should be pushed, defaulting to docker.io
 	// +optional
 	// +default=docker.io
 	registry string,
-	// Username for the container registry, if authentication is required.
 	// +optional
 	username string,
-	// Password for the container registry, if authentication is required.
 	// +optional
 	password *dagger.Secret,
-) (string, error) {
+) ([]string, error) {
 	if len(imageName) == 0 {
-		return "", fmt.Errorf("imageName is required to publish the container")
+		return nil, fmt.Errorf("at least one imageName is required")
 	}
-	container := g.Container(ctx, path).WithRegistryAuth(registry, username, password)
 	for _, name := range imageName {
-		container.Publish(ctx, fmt.Sprintf("%s/%s", registry, name))
+		if !validImageRef.MatchString(name) {
+			return nil, fmt.Errorf("invalid image reference: %q", name)
+		}
 	}
-	return fmt.Sprintf("Published image(s): %v to registry: %s", imageName, registry), nil
+
+	ctr, err := g.Container(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	ctr = ctr.WithRegistryAuth(registry, username, password)
+
+	var refs []string
+	for _, name := range imageName {
+		ref, err := ctr.Publish(ctx, fmt.Sprintf("%s/%s", registry, name))
+		if err != nil {
+			return refs, fmt.Errorf("publishing %s: %w", name, err)
+		}
+		refs = append(refs, ref)
+	}
+	return refs, nil
 }

@@ -1,108 +1,139 @@
-// A generated module for ReleasePlease functions
-//
-// This module has been generated via dagger init and serves as a reference to
-// basic module structure as you get started with Dagger.
-//
-// Two functions have been pre-created. You can modify, delete, or add to them,
-// as needed. They demonstrate usage of arguments and return types using simple
-// echo and grep commands. The functions can be called from the dagger CLI or
-// from one of the SDKs.
-//
-// The first line in this comment block is a short description line and the
-// rest is a long description with more detail on the module's purpose or usage,
-// if appropriate. All modules should have a short description.
-
+// Automate GitHub releases with release-please.
 package main
 
 import (
 	"context"
 	"dagger/release-please/internal/dagger"
+	"fmt"
+	"regexp"
 	"strings"
 )
 
+const releasePleaseVersion = "16.17.1"
+
+var (
+	validRepoURL = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
+
+	allowedReleaseTypes = map[string]bool{
+		"dart":           true,
+		"elixir":         true,
+		"go":             true,
+		"helm":           true,
+		"java":           true,
+		"krm-blueprint":  true,
+		"maven":          true,
+		"node":           true,
+		"ocaml":          true,
+		"php":            true,
+		"python":         true,
+		"ruby":           true,
+		"rust":           true,
+		"salesforce":     true,
+		"simple":         true,
+		"terraform-module": true,
+	}
+)
+
 type ReleasePlease struct {
-	// Token is a secret containing the GitHub token to use for authentication with the GitHub API.
 	Token *dagger.Secret
 }
 
 func New(
-	// The GitHub token to use for authentication with the GitHub API.
+	// GitHub token for authentication.
 	// +required
 	token *dagger.Secret,
 ) *ReleasePlease {
 	return &ReleasePlease{Token: token}
 }
 
-// Container returns a Dagger container configured with the release-please tool installed.
-// This container can be used to run release-please commands in a consistent environment.
-func (r *ReleasePlease) Container(ctx context.Context) *dagger.Container {
-	return dag.Container().From("node:current-alpine3.23").WithExec([]string{
-		"npm", "i", "release-please", "-g",
-	})
+// Container returns a container with release-please installed.
+func (r *ReleasePlease) Container() *dagger.Container {
+	return dag.Container().
+		From("node:current-alpine3.23").
+		WithExec([]string{"npm", "i", fmt.Sprintf("release-please@%s", releasePleaseVersion), "-g"})
 }
 
-// ReleasePr creates a release pull request using the release-please tool and returns the URL of the created pull request.
+func (r *ReleasePlease) validateInputs(releaseType, repoUrl string) error {
+	if !allowedReleaseTypes[releaseType] {
+		types := make([]string, 0, len(allowedReleaseTypes))
+		for t := range allowedReleaseTypes {
+			types = append(types, t)
+		}
+		return fmt.Errorf("invalid release type %q; allowed: %s", releaseType, strings.Join(types, ", "))
+	}
+	if !validRepoURL.MatchString(repoUrl) {
+		return fmt.Errorf("invalid repo URL %q; expected format: github.com/owner/repo", repoUrl)
+	}
+	return nil
+}
+
+func (r *ReleasePlease) exec(ctx context.Context, args ...string) (string, error) {
+	token, err := r.Token.Plaintext(ctx)
+	if err != nil {
+		return "", fmt.Errorf("reading token: %w", err)
+	}
+	cmd := append([]string{"release-please"}, args...)
+	cmd = append(cmd, "--token", token)
+	return r.Container().WithExec(cmd).Stdout(ctx)
+}
+
+// ReleasePr creates a release pull request.
 func (r *ReleasePlease) ReleasePr(
 	ctx context.Context,
-	// args are the arguments to pass to the release-please command. For example, you might include "--repo-url=github.com/owner/repo" and "--package-name=my-package".
-	// release-type is the type of release to create, such as "node" or "python". This will determine the format of the release notes and the versioning scheme used by release-please.
+	// Release type (e.g., "node", "go", "python").
 	// +required
 	releaseType string,
-	// repo-url is the URL of the GitHub repository to create the release in, such as "github.com/owner/repo".
+	// Repository URL (e.g., "github.com/owner/repo").
 	// +required
 	repoUrl string,
 ) (string, error) {
-	return r.Container(ctx).WithSecretVariable("GITHUB_TOKEN", r.Token).WithExec([]string{
-		"sh", "-c", `release-please release-pr --token $GITHUB_TOKEN --release-type ` + releaseType + ` --repo-url ` + repoUrl,
-	}).Stdout(ctx)
+	if err := r.validateInputs(releaseType, repoUrl); err != nil {
+		return "", err
+	}
+	return r.exec(ctx, "release-pr", "--repo-url", repoUrl, "--release-type", releaseType)
 }
 
-// GithubRelease creates a GitHub release using the release-please tool and returns the URL of the created release.
+// GithubRelease creates a GitHub release from a merged release PR.
 func (r *ReleasePlease) GithubRelease(
 	ctx context.Context,
-	// args are the arguments to pass to the release-please command. For example, you might include "--repo-url=github.com/owner/repo" and "--package-name=my-package".
-	// release-type is the type of release to create, such as "node" or "python". This will determine the format of the release notes and the versioning scheme used by release-please.
 	// +required
 	releaseType string,
-	// repo-url is the URL of the GitHub repository to create the release in, such as "github.com/owner/repo".
 	// +required
 	repoUrl string,
 ) (string, error) {
-	return r.Container(ctx).WithSecretVariable("GITHUB_TOKEN", r.Token).WithExec([]string{
-		"sh", "-c", `release-please github-release --token $GITHUB_TOKEN --release-type ` + releaseType + ` --repo-url ` + repoUrl,
-	}).Stdout(ctx)
+	if err := r.validateInputs(releaseType, repoUrl); err != nil {
+		return "", err
+	}
+	return r.exec(ctx, "github-release", "--repo-url", repoUrl, "--release-type", releaseType)
 }
 
-// Run executes the release-please commands to create a release pull request and a GitHub release, and returns the combined output of both operations.
+// Run creates a release PR then a GitHub release, returning combined output.
 func (r *ReleasePlease) Run(
 	ctx context.Context,
-	// release-type is the type of release to create, such as "node" or "python". This will determine the format of the release notes and the versioning scheme used by release-please.
 	// +required
 	releaseType string,
-	// repo-url is the URL of the GitHub repository to create the release in, such as "github.com/owner/repo".
 	// +required
 	repoUrl string,
 ) (string, error) {
-	ghOut, err := r.GithubRelease(ctx, releaseType, repoUrl)
+	prOut, err := r.ReleasePr(ctx, releaseType, repoUrl)
 	if err != nil {
-		return ghOut, err
+		return "", err
 	}
-	rpOut, err := r.ReleasePr(ctx, releaseType, repoUrl)
+	relOut, err := r.GithubRelease(ctx, releaseType, repoUrl)
 	if err != nil {
-		return rpOut, err
+		return prOut, err
 	}
-
-	return strings.Join([]string{ghOut, rpOut}, "\n"), nil
+	return prOut + "\n" + relOut, nil
 }
 
-// Bootstrap runs the `release-please bootstrap` command to set up release-please in the repository.
+// Bootstrap initializes release-please in a repository.
 func (r *ReleasePlease) Bootstrap(
 	ctx context.Context,
-	// repo-url is the URL of the GitHub repository to bootstrap release-please in, such as "github.com/owner/repo".
 	// +required
 	repoUrl string,
 ) (string, error) {
-	return r.Container(ctx).WithSecretVariable("GITHUB_TOKEN", r.Token).WithExec([]string{
-		"sh", "-c", `release-please bootstrap --token $GITHUB_TOKEN --repo-url ` + repoUrl,
-	}).Stdout(ctx)
+	if !validRepoURL.MatchString(repoUrl) {
+		return "", fmt.Errorf("invalid repo URL %q; expected format: github.com/owner/repo", repoUrl)
+	}
+	return r.exec(ctx, "bootstrap", "--repo-url", repoUrl)
 }

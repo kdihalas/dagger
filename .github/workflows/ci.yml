@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  amazon-ecr-login-module:
+    name: Validate amazon-ecr-login module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./amazon-ecr-login functions
+
+  aws-config-module:
+    name: Validate aws-config module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./aws-config functions
+
+  go-module:
+    name: Validate Go module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./go functions
+      - name: Lint
+        run: dagger -m ./go call lint --source=./go
+
+  npm-module:
+    name: Validate npm module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./npm functions
+
+  python-module:
+    name: Validate Python module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./python functions
+
+  release-please-module:
+    name: Validate release-please module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./release-please functions

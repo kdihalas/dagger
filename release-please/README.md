@@ -1,106 +1,101 @@
-# ReleasePlease
+# Release-Please Module
 
-Automate GitHub releases and release pull requests using release-please.
+Automate GitHub releases with release-please using Dagger.
 
 ## Requirements
 
-- GitHub token with appropriate permissions
-  - Public repos: `contents: read/write`, `pull-requests: read/write`
-  - Private repos: add `repo: read/write`
-  - Releases: `contents: read/write`
-- Dagger CLI v0.20.3 or compatible
-- Conventional commits in repository
+- Dagger v0.20.3 or later
+- GitHub token with `repo` and `workflows` permissions
 
 ## Functions
 
-### `container`
+| Function | Description | Key Parameters |
+|----------|-------------|-----------------|
+| `Container` | Container with release-please installed | — |
+| `ReleasePr` | Create a release pull request | `releaseType` (required), `repoUrl` (required) |
+| `GithubRelease` | Create a GitHub release from merged PR | `releaseType` (required), `repoUrl` (required) |
+| `Run` | Create release PR then release (both operations) | `releaseType` (required), `repoUrl` (required) |
+| `Bootstrap` | Initialize release-please in repository | `repoUrl` (required) |
 
-Returns a container with release-please pre-installed.
+## Supported Release Types
 
-**Example:**
-```sh
-dagger call --token enn://GITHUB_TOKEN container terminal
+`dart`, `elixir`, `go`, `helm`, `java`, `krm-blueprint`, `maven`, `node`, `ocaml`, `php`, `python`, `ruby`, `rust`, `salesforce`, `simple`, `terraform-module`
+
+## Usage Examples
+
+Initialize release-please in a repository:
+
+```bash
+dagger call -m release-please --token env:GITHUB_TOKEN bootstrap \
+  --repo-url github.com/owner/repo
 ```
 
-### `bootstrap`
+Create a release PR:
 
-Initializes release-please in a repository.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| repo-url | string | - | GitHub repository URL (e.g., `github.com/owner/repo`) |
-
-**Example:**
-```sh
-dagger call --token env://GITHUB_TOKEN bootstrap --repo-url=github.com/myorg/myproject
+```bash
+dagger call -m release-please --token env:GITHUB_TOKEN release-pr \
+  --release-type go \
+  --repo-url github.com/owner/repo
 ```
 
-### `releasePr`
+Create a GitHub release (after PR is merged):
 
-Creates a release pull request with automated version bumping and changelog.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| release-type | string | - | Release type: `node`, `python`, `go`, `rust`, `java`, `ruby`, `php`, `deno` |
-| repo-url | string | - | GitHub repository URL |
-
-**Example:**
-```sh
-dagger call --token env://GITHUB_TOKEN release-pr \
-  --release-type=go \
-  --repo-url=github.com/myorg/myproject
+```bash
+dagger call -m release-please --token env:GITHUB_TOKEN github-release \
+  --release-type go \
+  --repo-url github.com/owner/repo
 ```
 
-### `githubRelease`
+Create release PR and release in one command:
 
-Creates a GitHub release based on changelog entries.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| release-type | string | - | Release type |
-| repo-url | string | - | GitHub repository URL |
-
-**Example:**
-```sh
-dagger call --token env://GITHUB_TOKEN github-release \
-  --release-type=go \
-  --repo-url=github.com/myorg/myproject
+```bash
+dagger call -m release-please --token env:GITHUB_TOKEN run \
+  --release-type go \
+  --repo-url github.com/owner/repo
 ```
 
-### `run`
+For a Node.js repository:
 
-Executes full release workflow: creates release and PR.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| release-type | string | - | Release type |
-| repo-url | string | - | GitHub repository URL |
-
-**Example:**
-```sh
-dagger call --token env://GITHUB_TOKEN run \
-  --release-type=go \
-  --repo-url=github.com/myorg/myproject
+```bash
+dagger call -m release-please --token env:GITHUB_TOKEN release-pr \
+  --release-type node \
+  --repo-url github.com/owner/repo
 ```
 
-## Examples
+## GitHub Actions
 
-**Bootstrap a Go project:**
-```sh
-dagger call --token env://GITHUB_TOKEN bootstrap \
-  --repo-url=github.com/myorg/myproject
-```
+Use the release-please module in GitHub Actions to automate releases:
 
-**Create release PR:**
-```sh
-dagger call --token env://GITHUB_TOKEN release-pr \
-  --release-type=go \
-  --repo-url=github.com/myorg/myproject
-```
+```yaml
+name: Release
 
-**Create release after PR merges:**
-```sh
-dagger call --token env://GITHUB_TOKEN github-release \
-  --release-type=go \
-  --repo-url=github.com/myorg/myproject
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Create release PR
+        run: dagger -m release-please \
+          --token ${{ secrets.GITHUB_TOKEN }} \
+          call release-pr \
+          --release-type go \
+          --repo-url github.com/${{ github.repository }}
+      - name: Create GitHub release
+        run: dagger -m release-please \
+          --token ${{ secrets.GITHUB_TOKEN }} \
+          call github-release \
+          --release-type go \
+          --repo-url github.com/${{ github.repository }}
 ```

@@ -1,161 +1,124 @@
-# Go
+# Go Module
 
-Build and containerize Go applications with automated version detection, dependency management, testing, and registry publishing.
+Build, test, lint, and containerize Go applications with Dagger.
 
 ## Requirements
 
-- Go 1.26.1 or the version specified in your `go.mod`
-- `go.mod` file (required)
-- `go.sum` file (auto-generated if missing)
-- Dagger CLI v0.20.3 or compatible
-- Container registry credentials (for publishing)
+- Dagger v0.20.3 or later
+- Go v1.18+
 
 ## Functions
 
-### `goVersion`
+| Function | Description | Key Parameters |
+|----------|-------------|-----------------|
+| `GoVersion` | Extract Go version from go.mod | — |
+| `Base` | Container with Go and source mounted | — |
+| `Download` | Run `go mod download` (with tidy if needed) | — |
+| `Lint` | Run golangci-lint | `args` ([]string, optional) |
+| `Test` | Run `go test ./...` | `args` ([]string, optional) |
+| `Build` | Build statically-linked Linux binary | `path` (string, optional, default: `.`) |
+| `Container` | Build production container (distroless) | `path` (string, optional, default: `.`) |
+| `DebugContainer` | Build Alpine-based debug container | `path` (string, optional, default: `.`) |
+| `Publish` | Build and push container to registry | `path`, `imageName` ([]string, required), `registry`, `username`, `password` |
 
-Returns the Go version from `go.mod`.
+## Usage Examples
 
-**Example:**
-```sh
-dagger call go-version
+Extract Go version:
+
+```bash
+dagger call -m go --source . go-version
 ```
 
-### `base`
+Run tests:
 
-Container with Go SDK, source mounted at `/src`, working directory `/src`.
-
-**Example:**
-```sh
-dagger call base terminal
+```bash
+dagger call -m go --source . test
 ```
 
-### `download`
+Run tests with arguments:
 
-Runs `go mod download` and `go mod tidy` if needed.
-
-**Example:**
-```sh
-dagger call download terminal
+```bash
+dagger call -m go --source . test --args "-v" --args "-race"
 ```
 
-### `test`
+Run linter:
 
-Runs `go test ./...` with optional custom arguments.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| args | []string | [] | Additional test flags (e.g., `-v`, `-cover`, `-race`) |
-
-**Example:**
-```sh
-dagger call test --args="-v" --args="-cover"
+```bash
+dagger call -m go --source . lint
 ```
 
-### `lint`
+Build a binary:
 
-Runs `golangci-lint run` with optional custom arguments.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| args | []string | [] | Additional lint flags (e.g., `--fast`, `--enable=golint`) |
-
-**Example:**
-```sh
-dagger call lint --args="--fast"
+```bash
+dagger call -m go --source . build
 ```
 
-### `build`
+Build a production container:
 
-Builds a statically-linked Linux binary. Output at `/out/app`.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| path | string | . | Go package or file path to build |
-
-**Example:**
-```sh
-dagger call build --path="./cmd/myapp" export --path="./bin"
+```bash
+dagger call -m go --source . container
 ```
 
-### `container`
+Build a debug container (Alpine + shell):
 
-Creates a production container with distroless base image.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| path | string | . | Go package or file path to build |
-
-**Example:**
-```sh
-dagger call container publish --address="docker.io/myuser/myapp:latest"
+```bash
+dagger call -m go --source . debug-container
 ```
 
-### `debugContainer`
+Publish to a registry:
 
-Creates a debug container with Alpine Linux base image.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| path | string | . | Go package or file path to build |
-
-**Example:**
-```sh
-dagger call debug-container terminal
+```bash
+dagger call -m go --source . publish \
+  --image-name myapp:latest \
+  --registry docker.io \
+  --username myuser \
+  --password env:DOCKER_PASSWORD
 ```
 
-### `publish`
+Publish multiple image tags:
 
-Builds and publishes container to a registry.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| path | string | . | Go package or file path to build |
-| image-name | []string | - | Image names with tags (e.g., `myuser/myapp:1.0.0`) |
-| registry | string | docker.io | Registry hostname |
-| username | string | - | Registry username (for authentication) |
-| password | Secret | - | Registry password (for authentication) |
-
-**Example:**
-```sh
-dagger call publish \
-  --image-name="myuser/myapp:latest" \
-  --registry="docker.io" \
-  --username="myuser" \
-  --password=env:DOCKER_PASSWORD
+```bash
+dagger call -m go --source . publish \
+  --image-name myapp:latest,myapp:v1.0.0 \
+  --registry docker.io \
+  --username myuser \
+  --password env:DOCKER_PASSWORD
 ```
 
-## Examples
+## GitHub Actions
 
-**Run tests with coverage:**
-```sh
-dagger call test --args="-cover" --args="-race"
-```
+Use the Go module in GitHub Actions to build, test, and lint your Go applications:
 
-**Build and export binary:**
-```sh
-dagger call build --path="./cmd/server" export --path="./bin"
-```
+```yaml
+name: Build Go App
 
-**Build and run debug container:**
-```sh
-dagger call debug-container terminal
-```
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-**Publish to Docker Hub:**
-```sh
-dagger call publish \
-  --registry="docker.io" \
-  --image-name="myuser/myserver:latest" \
-  --username="myuser" \
-  --password=env:DOCKER_PASSWORD
-```
-
-**Publish to Google Container Registry:**
-```sh
-dagger call publish \
-  --registry="gcr.io" \
-  --image-name="my-project/myapp:latest" \
-  --username="_json_key" \
-  --password=env:GCR_JSON_KEY
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Run tests
+        run: dagger -m go call --source . test
+      - name: Run linter
+        run: dagger -m go call --source . lint
+      - name: Build binary
+        run: dagger -m go call --source . build
+      - name: Build container
+        run: dagger -m go call --source . container --path .
+      - name: Publish container
+        run: dagger -m go call --source . publish \
+          --path . \
+          --image-name myapp:latest \
+          --registry docker.io \
+          --username ${{ secrets.DOCKER_USERNAME }} \
+          --password ${{ secrets.DOCKER_PASSWORD }}
 ```
