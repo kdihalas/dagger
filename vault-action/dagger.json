@@ -1,0 +1,7 @@
+{
+  "name": "vault-action",
+  "engineVersion": "v0.20.3",
+  "sdk": {
+    "source": "go"
+  }
+}

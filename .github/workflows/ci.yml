@@ -75,6 +75,17 @@ jobs:
       - name: Validate module
         run: dagger -m ./python functions
 
+  vault-action-module:
+    name: Validate vault-action module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dagger/dagger-for-github@v8.4.1
+        with:
+          version: "0.20.3"
+      - name: Validate module
+        run: dagger -m ./vault-action functions
+
   release-please-module:
     name: Validate release-please module
     runs-on: ubuntu-latest

@@ -17,6 +17,7 @@ Reusable Dagger modules for building, testing, and releasing software.
 | [npm](./npm) | Build, test, lint, and containerize Node.js applications |
 | [python](./python) | Build, test, lint, and containerize Python applications |
 | [release-please](./release-please) | Automate GitHub releases with release-please |
+| [vault-action](./vault-action) | Retrieve secrets from HashiCorp Vault KV v2 engine |
 
 ## Quick Start
 
@@ -69,6 +70,15 @@ dagger call -m github.com/kdihalas/dagger/python --source . test
 dagger call -m github.com/kdihalas/dagger/release-please --token env:GITHUB_TOKEN release-pr \
   --release-type go \
   --repo-url github.com/owner/repo
+```
+
+### Vault Action Module
+
+```bash
+dagger call -m github.com/kdihalas/dagger/vault-action \
+  --url https://vault.example.com:8200 \
+  --token env:VAULT_TOKEN \
+  get-secret --mount secret --path myapp/config --key api-key
 ```
 
 See each module's README for full documentation and examples.
