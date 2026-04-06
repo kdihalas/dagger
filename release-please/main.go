@@ -12,7 +12,7 @@ import (
 const releasePleaseVersion = "17.3.0"
 
 var (
-	validRepoURL = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
+	validRepoURL = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
 
 	allowedReleaseTypes = map[string]bool{
 		"dart":             true,
@@ -62,7 +62,7 @@ func (r *ReleasePlease) validateInputs(releaseType, repoUrl string) error {
 		return fmt.Errorf("invalid release type %q; allowed: %s", releaseType, strings.Join(types, ", "))
 	}
 	if !validRepoURL.MatchString(repoUrl) {
-		return fmt.Errorf("invalid repo URL %q; expected format: github.com/owner/repo", repoUrl)
+		return fmt.Errorf("invalid repo URL %q; expected format: owner/repo", repoUrl)
 	}
 	return nil
 }
@@ -83,7 +83,7 @@ func (r *ReleasePlease) ReleasePr(
 	// Release type (e.g., "node", "go", "python").
 	// +required
 	releaseType string,
-	// Repository URL (e.g., "github.com/owner/repo").
+	// Repository in "owner/repo" format.
 	// +required
 	repoUrl string,
 ) (string, error) {
@@ -129,7 +129,7 @@ func (r *ReleasePlease) Run(
 // Manifest runs release-please using a manifest-based config.
 func (r *ReleasePlease) Manifest(
 	ctx context.Context,
-	// Repository URL (e.g., "github.com/owner/repo").
+	// Repository in "owner/repo" format.
 	// +required
 	repoUrl string,
 	// Path to release-please-config.json relative to repo root.
@@ -142,7 +142,7 @@ func (r *ReleasePlease) Manifest(
 	manifestFile string,
 ) (string, error) {
 	if !validRepoURL.MatchString(repoUrl) {
-		return "", fmt.Errorf("invalid repo URL %q; expected format: github.com/owner/repo", repoUrl)
+		return "", fmt.Errorf("invalid repo URL %q; expected format: owner/repo", repoUrl)
 	}
 	prOut, err := r.exec(ctx, "release-pr", "--repo-url", repoUrl, "--config-file", configFile, "--manifest-file", manifestFile)
 	if err != nil {
@@ -162,7 +162,7 @@ func (r *ReleasePlease) Bootstrap(
 	repoUrl string,
 ) (string, error) {
 	if !validRepoURL.MatchString(repoUrl) {
-		return "", fmt.Errorf("invalid repo URL %q; expected format: github.com/owner/repo", repoUrl)
+		return "", fmt.Errorf("invalid repo URL %q; expected format: owner/repo", repoUrl)
 	}
 	return r.exec(ctx, "bootstrap", "--repo-url", repoUrl)
 }
