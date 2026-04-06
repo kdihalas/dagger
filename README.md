@@ -11,7 +11,7 @@ Reusable Dagger modules for building, testing, and releasing software.
 | Module | Description |
 |--------|-------------|
 | [amazon-ecr-login](./amazon-ecr-login) | Log in to Amazon ECR and ECR Public registries |
-| [aws-config](./aws-config) | Configure AWS credentials (static, role assumption, OIDC) |
+| [configure-aws-credentials](./configure-aws-credentials) | Configure AWS credentials (static, role assumption, OIDC) |
 | [go](./go) | Build, test, lint, and containerize Go applications |
 | [npm](./npm) | Build, test, lint, and containerize Node.js applications |
 | [python](./python) | Build, test, lint, and containerize Python applications |
@@ -32,7 +32,7 @@ dagger call -m amazon-ecr-login \
 ### AWS Config Module
 
 ```bash
-dagger call -m aws-config \
+dagger call -m configure-aws-credentials \
   --access-key-id env:AWS_ACCESS_KEY_ID \
   --secret-access-key env:AWS_SECRET_ACCESS_KEY \
   with-credentials --ctr alpine:latest
