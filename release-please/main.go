@@ -9,27 +9,27 @@ import (
 	"strings"
 )
 
-const releasePleaseVersion = "16.17.1"
+const releasePleaseVersion = "17.3.0"
 
 var (
 	validRepoURL = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
 
 	allowedReleaseTypes = map[string]bool{
-		"dart":           true,
-		"elixir":         true,
-		"go":             true,
-		"helm":           true,
-		"java":           true,
-		"krm-blueprint":  true,
-		"maven":          true,
-		"node":           true,
-		"ocaml":          true,
-		"php":            true,
-		"python":         true,
-		"ruby":           true,
-		"rust":           true,
-		"salesforce":     true,
-		"simple":         true,
+		"dart":             true,
+		"elixir":           true,
+		"go":               true,
+		"helm":             true,
+		"java":             true,
+		"krm-blueprint":    true,
+		"maven":            true,
+		"node":             true,
+		"ocaml":            true,
+		"php":              true,
+		"python":           true,
+		"ruby":             true,
+		"rust":             true,
+		"salesforce":       true,
+		"simple":           true,
 		"terraform-module": true,
 	}
 )
