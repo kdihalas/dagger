@@ -22,6 +22,6 @@ jobs:
           dagger -m ./release-please call \
             --token=env:GITHUB_TOKEN \
             manifest \
-            --repo-url=github.com/${{ github.repository }}
+            --repo-url=https://github.com/${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
