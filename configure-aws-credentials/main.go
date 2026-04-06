@@ -22,8 +22,8 @@ const (
 	defaultSession = "dagger-session"
 )
 
-// AwsConfig configures AWS credentials for Dagger containers.
-type AwsConfig struct {
+// ConfigureAwsCredentials configures AWS credentials for Dagger containers.
+type ConfigureAwsCredentials struct {
 	// +optional
 	AccessKeyId *dagger.Secret
 	// +optional
@@ -49,17 +49,17 @@ func New(
 	// +optional
 	// +default="us-east-1"
 	region string,
-) *AwsConfig {
-	return &AwsConfig{
-		AccessKeyId:    accessKeyId,
+) *ConfigureAwsCredentials {
+	return &ConfigureAwsCredentials{
+		AccessKeyId:     accessKeyId,
 		SecretAccessKey: secretAccessKey,
-		SessionToken:   sessionToken,
-		Region:         region,
+		SessionToken:    sessionToken,
+		Region:          region,
 	}
 }
 
 // WithCredentials applies AWS credentials to a container as environment variables.
-func (a *AwsConfig) WithCredentials(
+func (a *ConfigureAwsCredentials) WithCredentials(
 	// Container to configure with AWS credentials.
 	ctr *dagger.Container,
 ) *dagger.Container {
@@ -77,7 +77,7 @@ func (a *AwsConfig) WithCredentials(
 	return ctr
 }
 
-func (a *AwsConfig) cliContainer() *dagger.Container {
+func (a *ConfigureAwsCredentials) cliContainer() *dagger.Container {
 	ctr := dag.Container().From(awsCliImage)
 	if a.AccessKeyId != nil {
 		ctr = ctr.WithSecretVariable("AWS_ACCESS_KEY_ID", a.AccessKeyId)
@@ -101,16 +101,16 @@ type stsResponse struct {
 	} `json:"Credentials"`
 }
 
-func (a *AwsConfig) parseSTSResponse(ctx context.Context, out string) (*AwsConfig, error) {
+func (a *ConfigureAwsCredentials) parseSTSResponse(ctx context.Context, out string) (*ConfigureAwsCredentials, error) {
 	var resp stsResponse
 	if err := json.Unmarshal([]byte(out), &resp); err != nil {
 		return nil, fmt.Errorf("parsing STS response: %w", err)
 	}
-	return &AwsConfig{
-		AccessKeyId:    dag.SetSecret("aws-access-key-id", resp.Credentials.AccessKeyId),
+	return &ConfigureAwsCredentials{
+		AccessKeyId:     dag.SetSecret("aws-access-key-id", resp.Credentials.AccessKeyId),
 		SecretAccessKey: dag.SetSecret("aws-secret-access-key", resp.Credentials.SecretAccessKey),
-		SessionToken:   dag.SetSecret("aws-session-token", resp.Credentials.SessionToken),
-		Region:         a.Region,
+		SessionToken:    dag.SetSecret("aws-session-token", resp.Credentials.SessionToken),
+		Region:          a.Region,
 	}, nil
 }
 
@@ -121,8 +121,8 @@ func validateDuration(duration int) error {
 	return nil
 }
 
-// AssumeRole calls STS AssumeRole and returns a new AwsConfig with temporary credentials.
-func (a *AwsConfig) AssumeRole(
+// AssumeRole calls STS AssumeRole and returns a new ConfigureAwsCredentials with temporary credentials.
+func (a *ConfigureAwsCredentials) AssumeRole(
 	ctx context.Context,
 	// ARN of the IAM role to assume.
 	// +required
@@ -141,7 +141,7 @@ func (a *AwsConfig) AssumeRole(
 	// Inline IAM policy JSON to scope down permissions.
 	// +optional
 	policy string,
-) (*AwsConfig, error) {
+) (*ConfigureAwsCredentials, error) {
 	if !validRoleArn.MatchString(roleArn) {
 		return nil, fmt.Errorf("invalid role ARN: %q", roleArn)
 	}
@@ -173,8 +173,8 @@ func (a *AwsConfig) AssumeRole(
 }
 
 // AssumeRoleWithWebIdentity calls STS AssumeRoleWithWebIdentity for OIDC-based auth
-// and returns a new AwsConfig with temporary credentials.
-func (a *AwsConfig) AssumeRoleWithWebIdentity(
+// and returns a new ConfigureAwsCredentials with temporary credentials.
+func (a *ConfigureAwsCredentials) AssumeRoleWithWebIdentity(
 	ctx context.Context,
 	// ARN of the IAM role to assume.
 	// +required
@@ -193,7 +193,7 @@ func (a *AwsConfig) AssumeRoleWithWebIdentity(
 	// Inline IAM policy JSON to scope down permissions.
 	// +optional
 	policy string,
-) (*AwsConfig, error) {
+) (*ConfigureAwsCredentials, error) {
 	if !validRoleArn.MatchString(roleArn) {
 		return nil, fmt.Errorf("invalid role ARN: %q", roleArn)
 	}
