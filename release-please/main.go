@@ -126,6 +126,35 @@ func (r *ReleasePlease) Run(
 	return prOut + "\n" + relOut, nil
 }
 
+// Manifest runs release-please using a manifest-based config.
+func (r *ReleasePlease) Manifest(
+	ctx context.Context,
+	// Repository URL (e.g., "github.com/owner/repo").
+	// +required
+	repoUrl string,
+	// Path to release-please-config.json relative to repo root.
+	// +optional
+	// +default="release-please-config.json"
+	configFile string,
+	// Path to .release-please-manifest.json relative to repo root.
+	// +optional
+	// +default=".release-please-manifest.json"
+	manifestFile string,
+) (string, error) {
+	if !validRepoURL.MatchString(repoUrl) {
+		return "", fmt.Errorf("invalid repo URL %q; expected format: github.com/owner/repo", repoUrl)
+	}
+	prOut, err := r.exec(ctx, "release-pr", "--repo-url", repoUrl, "--config-file", configFile, "--manifest-file", manifestFile)
+	if err != nil {
+		return "", err
+	}
+	relOut, err := r.exec(ctx, "github-release", "--repo-url", repoUrl, "--config-file", configFile, "--manifest-file", manifestFile)
+	if err != nil {
+		return prOut, err
+	}
+	return prOut + "\n" + relOut, nil
+}
+
 // Bootstrap initializes release-please in a repository.
 func (r *ReleasePlease) Bootstrap(
 	ctx context.Context,
