@@ -26,6 +26,8 @@ jobs:
       - uses: dagger/dagger-for-github@v8.4.1
         with:
           version: "0.20.3"
+        env:
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG: ${{ steps.cache-config.outputs.config }}
       - name: Run release-please
         run: |
           dagger -m ./release-please call \
@@ -34,4 +36,3 @@ jobs:
             --repo-url=${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          _EXPERIMENTAL_DAGGER_CACHE_CONFIG: ${{ steps.cache-config.outputs.config }}
